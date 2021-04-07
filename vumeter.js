@@ -2,14 +2,14 @@ function vumeter(elem, config){
 
     // Settings
     var max             = config.max || 100;
-    var boxCount        = config.boxCount || 10;
-    var boxCountRed     = config.boxCountRed || 2;
-    var boxCountYellow  = config.boxCountYellow || 3;
+    var boxCount        = config.boxCount || 20;
+    var boxCountRed     = config.boxCountRed || 4;
+    var boxCountYellow  = config.boxCountYellow || 4;
     var boxGapFraction  = config.boxGapFraction || 0.2;
     var jitter          = config.jitter || 0.02;
 
     // Colours
-    var redOn     = 'rgba(255,47,30,0.9)';
+    var redOn     = 'rgba(255,65,30,0.9)';
     var redOff    = 'rgba(64,12,8,0.9)';
     var yellowOn  = 'rgba(255,215,5,0.9)';
     var yellowOff = 'rgba(64,53,0,0.9)';
@@ -34,52 +34,37 @@ function vumeter(elem, config){
     // Main draw loop
     var draw = function(){
 
-        var targetVal = parseInt(elem.dataset.val, 10);
-
-        // Gradual approach
-        if (curVal <= targetVal){
-            curVal += (targetVal - curVal) / 5;
-        } else {
-            curVal -= (curVal - targetVal) / 5;
-        }
-
-        // Apply jitter
-        if (jitter > 0 && curVal > 0){
-            var amount = (Math.random()*jitter*max);
-            if (Math.random() > 0.5){
-                amount = -amount;
-            }
-            curVal += amount;
-        }
-        if (curVal < 0) {
-            curVal = 0;
-        }
-
+        var avr = parseInt(elem.dataset.avr, 10);
+        var pk = parseInt(elem.dataset.pk, 10);
+        if(avr>max)
+          avr = max;
+        if(pk>max)
+          pk = max;
         c.save();
         c.beginPath();
         c.rect(0, 0, width, height);
         c.fillStyle = 'rgb(32,32,32)';
         c.fill();
         c.restore();
-        drawBoxes(c, curVal);
+        drawBoxes(c, avr, pk);
 
         requestAnimationFrame(draw);
     };
 
     // Draw the boxes
-    function drawBoxes(c, val){
+    function drawBoxes(c, avr, pk){
         c.save(); 
         c.translate(boxGapX, boxGapY);
         for (var i = 0; i < boxCount; i++){
             var id = getId(i);
 
             c.beginPath();
-            if (isOn(id, val)){
+            if (isOn(id, avr, 0)){
                 c.shadowBlur = 10;
-                c.shadowColor = getBoxColor(id, val);
+                c.shadowColor = getBoxColor(id, avr, 0);
             }
             c.rect(0, 0, boxWidth, boxHeight);
-            c.fillStyle = getBoxColor(id, val);
+            c.fillStyle = getBoxColor(id, avr, pk);
             c.fill();
             c.translate(0, boxHeight + boxGapY);
         }
@@ -87,15 +72,15 @@ function vumeter(elem, config){
     }
 
     // Get the color of a box given it's ID and the current value
-    function getBoxColor(id, val){
+    function getBoxColor(id, val, pk){
         // on colours
         if (id > boxCount - boxCountRed){
-            return isOn(id, val)? redOn : redOff;
+            return isOn(id, val, pk)? redOn : redOff;
         }
         if (id > boxCount - boxCountRed - boxCountYellow){
-            return isOn(id, val)? yellowOn : yellowOff;
+            return isOn(id, val, pk)? yellowOn : yellowOff;
         }
-        return isOn(id, val)? greenOn : greenOff;
+        return isOn(id, val, pk)? greenOn : greenOff;
     }
 
     function getId(index){
@@ -106,14 +91,14 @@ function vumeter(elem, config){
         return Math.abs(index - (boxCount - 1)) + 1;
     }
 
-    function isOn(id, val){
+    function isOn(id, avr, pk){
         // We need to scale the input value (0-max)
         // so that it fits into the number of boxes
-        var maxOn = Math.ceil((val/max) * boxCount);
-        return (id <= maxOn);
+        var avrOn = Math.ceil((avr/max) * boxCount);
+        var pkOn = Math.ceil((pk/max) * boxCount);
+        return ((id <= avrOn) || (id == pkOn));
     }
 
     // Trigger the animation
     draw();
 }
-
